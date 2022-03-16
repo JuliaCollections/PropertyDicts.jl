@@ -7,6 +7,9 @@ using Test
     _keys = collect(keys(d))
     pd = PropertyDict(d)
 
+    str_props = PropertyDict("foo" => 1, "bar" => 2)
+    sym_props = PropertyDict(:foo => 1, :bar => 2)
+
     @testset "convert" begin
         expected = OrderedDict
         result = convert(expected, pd)
@@ -19,6 +22,12 @@ using Test
             default = "baz"
 
             @test get(pd, "DNE", default) == default
+            @test get(str_props, :baz, 3) == 3
+            @test get(sym_props, "baz", 3) == 3
+            @test get!(str_props, :baz, 3) == 3
+            @test get!(sym_props, "baz", 3) == 3
+            @test get!(() -> 4, str_props, :baz) == 3
+            @test get!(() -> 4, sym_props, "baz") == 3
         end
 
         @testset "$(typeof(key))" for key in _keys
@@ -33,6 +42,11 @@ using Test
     @testset "getproperty" begin
         @test pd.foo == 1
         @test pd.bar == 2
+        sym_props."spam" = 4
+        @test sym_props."spam" == 4
+
+        str_props.spam = 4
+        @test str_props.spam == 4
     end
 
     @testset "iterate" begin
