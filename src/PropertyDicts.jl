@@ -9,6 +9,23 @@ struct PropertyDict{K, V, T <: AbstractDict{K, V}} <: AbstractDict{K, V}
     PropertyDict(args...) = PropertyDict(Dict(args...))
 end
 
+unwrap(d::PropertyDict) = getfield(d, :d)
+
+Base.sizehint!(x::PropertyDict, n) = sizehint!(unwrap(d), n)
+
+# return the method on `unwrap` on these
+for f in [:push!, :pushfirst!, :pop!, :popfirst!]
+    eval(:(Base.$(f)(d::PropertyDict, args...) = $(f)(unwrap(d), args...)))
+end
+
+# return `d` after mutating underlying dict
+for f in [:empty!, :delete!]
+    @eval function Base.$(f)(d::PropertyDict, args...)
+        $(f)(unwrap(d), args...)
+        return d
+    end
+end
+
 Base.getproperty(d::PropertyDict, n::Symbol) = getindex(d, n)
 Base.getproperty(d::PropertyDict, n::String) = getindex(d, n)
 
@@ -81,12 +98,22 @@ Base.length(d::PropertyDict) = length(unwrap(d))
 
 Base.string(d::PropertyDict) = string(unwrap(d))
 
+Base.hasproperty(d::PropertyDict, key::Symbol) = haskey(d, key)
+Base.hasproperty(d::PropertyDict, key) = haskey(d, key)
+Base.haskey(d::PropertyDict, key) = haskey(unwrap(d), key)
+Base.haskey(d::PropertyDict{<:AbstractString}, key::Symbol) = haskey(d, String(key))
+Base.haskey(d::PropertyDict{Symbol}, key::AbstractString) = haskey(d, Symbol(key))
+function Base.haskey(d::PropertyDict{Any}, key::AbstractString)
+    haskey(unwrap(d), key) || haskey(unwrap(d), Symbol(key))
+end
+function Base.haskey(d::PropertyDict{Any}, key::Symbol)
+    haskey(unwrap(d), key) || haskey(unwrap(d), String(key))
+end
+
 # a handful of dictionaries aren't just wrapped in `KeySet` and `ValueIterator`
 Base.keys(d::PropertyDict) = keys(unwrap(d))
 Base.values(d::PropertyDict) = values(unwrap(d))
 
 Base.propertynames(d::PropertyDict) = keys(d)
-
-unwrap(d::PropertyDict) = getfield(d, :d)
 
 end # module PropertyDicts

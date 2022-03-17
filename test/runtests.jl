@@ -10,6 +10,19 @@ using Test
     str_props = PropertyDict("foo" => 1, "bar" => 2)
     sym_props = PropertyDict(:foo => 1, :bar => 2)
 
+    nt = (d =1, )
+    pnt = pairs(nt)
+    ntpd = PropertyDict(pnt)
+    @test keys(PropertyDict(ntpd)) === keys(nt)
+    @test values(PropertyDict(ntpd)) === values(pnt)
+    @test propertynames(PropertyDict(ntpd)) === propertynames(nt)
+    @test empty!(PropertyDict(Dict("foo"=>1, :bar=>2))) isa PropertyDict
+
+    @test hasproperty(sym_props, "bar")
+    @test hasproperty(str_props, :bar)
+    @test hasproperty(pd, :foo)
+    @test hasproperty(pd, "bar")
+
     @testset "convert" begin
         expected = OrderedDict
         result = convert(expected, pd)
