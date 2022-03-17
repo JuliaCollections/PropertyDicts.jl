@@ -35,12 +35,15 @@ using Test
             default = "baz"
 
             @test get(pd, "DNE", default) == default
+            @test get(() -> 3, str_props, :foo) == 1
+            @test get(() -> 3, str_props, :baz) == 3
             @test get(str_props, :baz, 3) == 3
             @test get(sym_props, "baz", 3) == 3
             @test get!(str_props, :baz, 3) == 3
             @test get!(sym_props, "baz", 3) == 3
             @test get!(() -> 4, str_props, :baz) == 3
             @test get!(() -> 4, sym_props, "baz") == 3
+            @test get!(() -> 4, sym_props, "buz") == 4
         end
 
         @testset "$(typeof(key))" for key in _keys

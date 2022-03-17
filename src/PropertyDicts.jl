@@ -11,7 +11,7 @@ end
 
 unwrap(d::PropertyDict) = getfield(d, :d)
 
-Base.sizehint!(x::PropertyDict, n) = sizehint!(unwrap(d), n)
+Base.sizehint!(x::PropertyDict, n::Integer) = sizehint!(unwrap(d), n)
 
 # return the method on `unwrap` on these
 for f in [:push!, :pushfirst!, :pop!, :popfirst!]
@@ -72,7 +72,9 @@ Base.get!(d::PropertyDict{<:AbstractString}, k::Symbol, default) = get!(d, Strin
 function Base.get!(f::Union{Function,Type}, d::PropertyDict, k)
     out = get(d, k, Base.secret_table_token)
     if out === Base.secret_table_token
-        return setindex!(d, f(), k)
+        default = f()
+        setindex!(d, default, k)
+        return default
     else
         return out
     end
@@ -98,8 +100,10 @@ Base.length(d::PropertyDict) = length(unwrap(d))
 
 Base.string(d::PropertyDict) = string(unwrap(d))
 
-Base.hasproperty(d::PropertyDict, key::Symbol) = haskey(d, key)
-Base.hasproperty(d::PropertyDict, key) = haskey(d, key)
+@static if isdefined(Base, :hasproperty)
+    Base.hasproperty(d::PropertyDict, key::Symbol) = haskey(d, key)
+    Base.hasproperty(d::PropertyDict, key) = haskey(d, key)
+end
 Base.haskey(d::PropertyDict, key) = haskey(unwrap(d), key)
 Base.haskey(d::PropertyDict{<:AbstractString}, key::Symbol) = haskey(d, String(key))
 Base.haskey(d::PropertyDict{Symbol}, key::AbstractString) = haskey(d, Symbol(key))
