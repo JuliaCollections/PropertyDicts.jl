@@ -18,10 +18,12 @@ using Test
     @test propertynames(PropertyDict(ntpd)) === propertynames(nt)
     @test empty!(PropertyDict(Dict("foo"=>1, :bar=>2))) isa PropertyDict
 
-    @test hasproperty(sym_props, "bar")
-    @test hasproperty(str_props, :bar)
-    @test hasproperty(pd, :foo)
-    @test hasproperty(pd, "bar")
+    if isdefined(Base, :hasproperty)
+        @test hasproperty(sym_props, "bar")
+        @test hasproperty(str_props, :bar)
+        @test hasproperty(pd, :foo)
+        @test hasproperty(pd, "bar")
+    end
 
     @testset "convert" begin
         expected = OrderedDict
@@ -87,7 +89,7 @@ using Test
         @test string(pd) == string(d)
     end
 
-    @testset "unwrap" begin
-        @test PropertyDicts.unwrap(pd) == d
-    end
+    push!(pd, :buz => 10)
+    @test pop!(pd, :buz, 20) == 10
+    @test pop!(pd, :buz, 20) == 20
 end

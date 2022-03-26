@@ -13,10 +13,8 @@ unwrap(d::PropertyDict) = getfield(d, :d)
 
 Base.sizehint!(x::PropertyDict, n::Integer) = sizehint!(unwrap(d), n)
 
-# return the method on `unwrap` on these
-for f in [:push!, :pushfirst!, :pop!, :popfirst!]
-    eval(:(Base.$(f)(d::PropertyDict, args...) = $(f)(unwrap(d), args...)))
-end
+Base.push!(d::PropertyDict, p::Pair) = push!(unwrap(d), p)
+Base.pop!(d::PropertyDict, args...) = pop!(unwrap(d), args...)
 
 # return `d` after mutating underlying dict
 for f in [:empty!, :delete!]
