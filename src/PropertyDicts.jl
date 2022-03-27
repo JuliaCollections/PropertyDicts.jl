@@ -11,17 +11,20 @@ end
 
 unwrap(d::PropertyDict) = getfield(d, :d)
 
-Base.sizehint!(x::PropertyDict, n::Integer) = sizehint!(unwrap(d), n)
+function Base.sizehint!(d::PropertyDict, n::Integer)
+    sizehint!(unwrap(d), n)
+    return d
+end
 
 Base.push!(d::PropertyDict, p::Pair) = push!(unwrap(d), p)
 Base.pop!(d::PropertyDict, args...) = pop!(unwrap(d), args...)
-
-# return `d` after mutating underlying dict
-for f in [:empty!, :delete!]
-    @eval function Base.$(f)(d::PropertyDict, args...)
-        $(f)(unwrap(d), args...)
-        return d
-    end
+function Base.empty!(d::PropertyDict)
+    empty!(unwrap(d))
+    return d
+end
+function Base.delete!(d::PropertyDict, key)
+    delete!(unwrap(d), key)
+    return d
 end
 
 Base.getproperty(d::PropertyDict, n::Symbol) = getindex(d, n)
