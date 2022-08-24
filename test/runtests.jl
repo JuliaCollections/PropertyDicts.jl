@@ -7,6 +7,24 @@ using Test
     _keys = collect(keys(d))
     pd = PropertyDict(d)
 
+    str_props = PropertyDict("foo" => 1, "bar" => 2)
+    sym_props = PropertyDict(:foo => 1, :bar => 2)
+
+    nt = (d =1, )
+    pnt = pairs(nt)
+    ntpd = PropertyDict(pnt)
+    @test keys(PropertyDict(ntpd)) === keys(nt)
+    @test values(PropertyDict(ntpd)) === values(pnt)
+    @test propertynames(PropertyDict(ntpd)) === propertynames(nt)
+    @test empty!(PropertyDict(Dict("foo"=>1, :bar=>2))) isa PropertyDict
+
+    if isdefined(Base, :hasproperty)
+        @test hasproperty(sym_props, "bar")
+        @test hasproperty(str_props, :bar)
+        @test hasproperty(pd, :foo)
+        @test hasproperty(pd, "bar")
+    end
+
     @testset "convert" begin
         expected = OrderedDict
         result = convert(expected, pd)
@@ -19,6 +37,15 @@ using Test
             default = "baz"
 
             @test get(pd, "DNE", default) == default
+            @test get(() -> 3, str_props, :foo) == 1
+            @test get(() -> 3, str_props, :baz) == 3
+            @test get(str_props, :baz, 3) == 3
+            @test get(sym_props, "baz", 3) == 3
+            @test get!(str_props, :baz, 3) == 3
+            @test get!(sym_props, "baz", 3) == 3
+            @test get!(() -> 4, str_props, :baz) == 3
+            @test get!(() -> 4, sym_props, "baz") == 3
+            @test get!(() -> 4, sym_props, "buz") == 4
         end
 
         @testset "$(typeof(key))" for key in _keys
@@ -33,6 +60,11 @@ using Test
     @testset "getproperty" begin
         @test pd.foo == 1
         @test pd.bar == 2
+        sym_props."spam" = 4
+        @test sym_props."spam" == 4
+
+        str_props.spam = 4
+        @test str_props.spam == 4
     end
 
     @testset "iterate" begin
@@ -57,7 +89,9 @@ using Test
         @test string(pd) == string(d)
     end
 
-    @testset "unwrap" begin
-        @test PropertyDicts.unwrap(pd) == d
-    end
+    push!(pd, :buz => 10)
+    @test pop!(pd, :buz, 20) == 10
+    @test pop!(pd, :buz, 20) == 20
+    @test sizehint!(pd, 5) === pd
+    @test get(pd, delete!(pd, "foo"), 10) == 10
 end
