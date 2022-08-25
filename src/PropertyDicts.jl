@@ -33,11 +33,6 @@ Base.getproperty(d::PropertyDict, n::String) = getindex(d, n)
 Base.setproperty!(d::PropertyDict, n::Symbol, v) = setindex!(d, v, n)
 Base.setproperty!(d::PropertyDict, n::String, v) = setindex!(d, v, n)
 
-Base.convert(::Type{Any}, d::PropertyDict) = d
-Base.convert(::Type{PropertyDict{K,V,T}}, d::PropertyDict{K,V,T}) where {K,V,T<:AbstractDict{K,V}} = d
-Base.convert(::Type{T}, d::PropertyDict) where T <: AbstractDict = T === AbstractDict ? d : convert(T, PropertyDicts.unwrap(d))
-Base.convert(::Type{T}, d::PropertyDict) where T = convert(T, PropertyDicts.unwrap(d))
-
 Base.get(d::PropertyDict, k, default) = get(unwrap(d), k, default)
 Base.get(d::PropertyDict{Symbol}, k::AbstractString, default) = get(d, Symbol(k), default)
 Base.get(d::PropertyDict{<:AbstractString}, k::Symbol, default) = get(d, String(k), default)
