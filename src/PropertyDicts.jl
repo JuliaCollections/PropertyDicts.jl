@@ -83,8 +83,8 @@ Base.setproperty!(pd::PropertyDict, n::String, v) = setindex!(pd, v, n)
 Base.propertynames(pd::PropertyDict) = keys(pd)
 
 @static if isdefined(Base, :hasproperty)
-    Base.hasproperty(pd::PropertyDict, key::Symbol) = haskey(pd, key)
-    Base.hasproperty(pd::PropertyDict, key) = haskey(pd, key)
+    Base.hasproperty(pd::PropertyDict, k::Symbol) = haskey(pd, _tokey(pd, k))
+    Base.hasproperty(pd::PropertyDict, k) = haskey(pd, _tokey(pd, k))
 end
 
 end # module PropertyDicts
