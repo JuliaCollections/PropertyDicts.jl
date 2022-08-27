@@ -16,7 +16,8 @@ struct PropertyDict{K<:Union{String,Symbol}, V, D <: Union{AbstractDict,NamedTup
         end
         PropertyDict(dsym)
     end
-    PropertyDict(args...) = PropertyDict(Dict(args...))
+    PropertyDict() = PropertyDict(NamedTuple())
+    PropertyDict(arg, args...) = PropertyDict(Dict(arg, args...))
 end
 
 Base.isempty(pd::PropertyDict) = isempty(getfield(pd, :d))

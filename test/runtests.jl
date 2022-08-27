@@ -105,6 +105,6 @@ using Test
         @test merge(a, f, c) == merge(f, a, c)
 
         combiner(x, y) = "$(x) and $(y)"
-        mergewith(combiner, a, f, c)
+        mergewith(combiner, a, f, c, PropertyDict())
     end
 end
