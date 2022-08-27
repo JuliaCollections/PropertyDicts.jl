@@ -5,56 +5,57 @@ export PropertyDict
 struct PropertyDict{K, V, T <: AbstractDict{K, V}} <: AbstractDict{K, V}
     d::T
 
+    PropertyDict(@nospecialize pd::PropertyDict) = pd
     PropertyDict(d::T) where {T <: AbstractDict} = new{keytype(d), valtype(d), T}(d)
     PropertyDict(args...) = PropertyDict(Dict(args...))
 end
 
-unwrap(d::PropertyDict) = getfield(d, :d)
+unwrap(pd::PropertyDict) = getfield(pd, :d)
 
-function Base.sizehint!(d::PropertyDict, n::Integer)
-    sizehint!(unwrap(d), n)
-    return d
+function Base.sizehint!(pd::PropertyDict, n::Integer)
+    sizehint!(getfield(pd, :d), n)
+    return pd
 end
 
-Base.push!(d::PropertyDict, p::Pair) = push!(unwrap(d), p)
-Base.pop!(d::PropertyDict, args...) = pop!(unwrap(d), args...)
-function Base.empty!(d::PropertyDict)
-    empty!(unwrap(d))
-    return d
+Base.push!(pd::PropertyDict, p::Pair) = push!(getfield(pd, :d), p)
+Base.pop!(pd::PropertyDict, args...) = pop!(getfield(pd, :d), args...)
+function Base.empty!(pd::PropertyDict)
+    empty!(getfield(pd, :d))
+    return pd
 end
-function Base.delete!(d::PropertyDict, key)
-    delete!(unwrap(d), key)
-    return d
+function Base.delete!(pd::PropertyDict, key)
+    delete!(getfield(pd, :d), key)
+    return pd
 end
 
-Base.getproperty(d::PropertyDict, n::Symbol) = getindex(d, n)
-Base.getproperty(d::PropertyDict, n::String) = getindex(d, n)
+Base.getproperty(pd::PropertyDict, n::Symbol) = getindex(pd, n)
+Base.getproperty(pd::PropertyDict, n::String) = getindex(pd, n)
 
-Base.setproperty!(d::PropertyDict, n::Symbol, v) = setindex!(d, v, n)
-Base.setproperty!(d::PropertyDict, n::String, v) = setindex!(d, v, n)
+Base.setproperty!(pd::PropertyDict, n::Symbol, v) = setindex!(pd, v, n)
+Base.setproperty!(pd::PropertyDict, n::String, v) = setindex!(pd, v, n)
 
-Base.get(d::PropertyDict, k, default) = get(unwrap(d), k, default)
-Base.get(d::PropertyDict{Symbol}, k::AbstractString, default) = get(d, Symbol(k), default)
-Base.get(d::PropertyDict{<:AbstractString}, k::Symbol, default) = get(d, String(k), default)
-function Base.get(d::PropertyDict{Any}, k::Symbol, default)
-    out = get(unwrap(d), k, Base.secret_table_token)
+Base.get(pd::PropertyDict, k, default) = get(getfield(pd, :d), k, default)
+Base.get(pd::PropertyDict{Symbol}, k::AbstractString, default) = get(pd, Symbol(k), default)
+Base.get(pd::PropertyDict{<:AbstractString}, k::Symbol, default) = get(pd, String(k), default)
+function Base.get(pd::PropertyDict{Any}, k::Symbol, default)
+    out = get(getfield(pd, :d), k, Base.secret_table_token)
     if out === Base.secret_table_token
-        return get(unwrap(d), String(k), default)
+        return get(getfield(pd, :d), String(k), default)
     else
         return out
     end
 end
-function Base.get(d::PropertyDict{Any}, k::String, default)
-    out = get(unwrap(d), k, Base.secret_table_token)
+function Base.get(pd::PropertyDict{Any}, k::String, default)
+    out = get(getfield(pd, :d), k, Base.secret_table_token)
     if out === Base.secret_table_token
-        return get(unwrap(d), Symbol(k), default)
+        return get(getfield(pd, :d), Symbol(k), default)
     else
         return out
     end
 end
 
-function Base.get(f::Union{Function,Type}, d::PropertyDict, k)
-    out = get(d, k, Base.secret_table_token)
+function Base.get(f::Union{Function,Type}, pd::PropertyDict, k)
+    out = get(pd, k, Base.secret_table_token)
     if out === Base.secret_table_token
         return f()
     else
@@ -62,58 +63,58 @@ function Base.get(f::Union{Function,Type}, d::PropertyDict, k)
     end
 end
 
-Base.get!(d::PropertyDict, k, default) = get!(unwrap(d), k, default)
-Base.get!(d::PropertyDict{Symbol}, k::AbstractString, default) = get!(d, Symbol(k), default)
-Base.get!(d::PropertyDict{<:AbstractString}, k::Symbol, default) = get!(d, String(k), default)
-function Base.get!(f::Union{Function,Type}, d::PropertyDict, k)
-    out = get(d, k, Base.secret_table_token)
+Base.get!(pd::PropertyDict, k, default) = get!(getfield(pd, :d), k, default)
+Base.get!(pd::PropertyDict{Symbol}, k::AbstractString, default) = get!(pd, Symbol(k), default)
+Base.get!(pd::PropertyDict{<:AbstractString}, k::Symbol, default) = get!(pd, String(k), default)
+function Base.get!(f::Union{Function,Type}, pd::PropertyDict, k)
+    out = get(pd, k, Base.secret_table_token)
     if out === Base.secret_table_token
         default = f()
-        setindex!(d, default, k)
+        setindex!(pd, default, k)
         return default
     else
         return out
     end
 end
 
-function Base.getindex(d::PropertyDict, k)
-    out = get(d, k, Base.secret_table_token)
+function Base.getindex(pd::PropertyDict, k)
+    out = get(pd, k, Base.secret_table_token)
     out === Base.secret_table_token && throw(KeyError(k))
     return out
 end
 
-Base.setindex!(d::PropertyDict, v, i) = setindex!(unwrap(d), v, i)
-Base.setindex!(d::PropertyDict{<:AbstractString}, v, i::Symbol) = setindex!(d, v, String(i))
-Base.setindex!(d::PropertyDict{Symbol}, v, i::AbstractString) = setindex!(d, v, Symbol(i))
+Base.setindex!(pd::PropertyDict, v, i) = setindex!(getfield(pd, :d), v, i)
+Base.setindex!(pd::PropertyDict{<:AbstractString}, v, i::Symbol) = setindex!(pd, v, String(i))
+Base.setindex!(pd::PropertyDict{Symbol}, v, i::AbstractString) = setindex!(pd, v, Symbol(i))
 
-Base.iterate(d::PropertyDict) = iterate(unwrap(d))
-Base.iterate(d::PropertyDict, i) = iterate(unwrap(d), i)
+Base.iterate(pd::PropertyDict) = iterate(getfield(pd, :d))
+Base.iterate(pd::PropertyDict, i) = iterate(getfield(pd, :d), i)
 
 Base.IteratorSize(::Type{PropertyDict{K,V,T}}) where {K,V,T} = Base.IteratorSize(T)
 Base.IteratorEltype(::Type{PropertyDict{K,V,T}}) where {K,V,T} = Base.IteratorEltype(T)
 
-Base.length(d::PropertyDict) = length(unwrap(d))
+Base.length(pd::PropertyDict) = length(getfield(pd, :d))
 
-Base.string(d::PropertyDict) = string(unwrap(d))
+Base.string(pd::PropertyDict) = string(getfield(pd, :d))
 
 @static if isdefined(Base, :hasproperty)
-    Base.hasproperty(d::PropertyDict, key::Symbol) = haskey(d, key)
-    Base.hasproperty(d::PropertyDict, key) = haskey(d, key)
+    Base.hasproperty(pd::PropertyDict, key::Symbol) = haskey(pd, key)
+    Base.hasproperty(pd::PropertyDict, key) = haskey(pd, key)
 end
-Base.haskey(d::PropertyDict, key) = haskey(unwrap(d), key)
-Base.haskey(d::PropertyDict{<:AbstractString}, key::Symbol) = haskey(d, String(key))
-Base.haskey(d::PropertyDict{Symbol}, key::AbstractString) = haskey(d, Symbol(key))
-function Base.haskey(d::PropertyDict{Any}, key::AbstractString)
-    haskey(unwrap(d), key) || haskey(unwrap(d), Symbol(key))
+Base.haskey(pd::PropertyDict, key) = haskey(getfield(pd, :d), key)
+Base.haskey(pd::PropertyDict{<:AbstractString}, key::Symbol) = haskey(pd, String(key))
+Base.haskey(pd::PropertyDict{Symbol}, key::AbstractString) = haskey(pd, Symbol(key))
+function Base.haskey(pd::PropertyDict{Any}, key::AbstractString)
+    haskey(getfield(pd, :d), key) || haskey(getfield(pd, :d), Symbol(key))
 end
-function Base.haskey(d::PropertyDict{Any}, key::Symbol)
-    haskey(unwrap(d), key) || haskey(unwrap(d), String(key))
+function Base.haskey(pd::PropertyDict{Any}, key::Symbol)
+    haskey(getfield(pd, :d), key) || haskey(getfield(pd, :d), String(key))
 end
 
 # a handful of dictionaries aren't just wrapped in `KeySet` and `ValueIterator`
-Base.keys(d::PropertyDict) = keys(unwrap(d))
-Base.values(d::PropertyDict) = values(unwrap(d))
+Base.keys(pd::PropertyDict) = keys(getfield(pd, :d))
+Base.values(pd::PropertyDict) = values(getfield(pd, :d))
 
-Base.propertynames(d::PropertyDict) = keys(d)
+Base.propertynames(pd::PropertyDict) = keys(pd)
 
 end # module PropertyDicts
