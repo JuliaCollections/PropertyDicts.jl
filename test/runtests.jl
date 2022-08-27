@@ -85,10 +85,6 @@ using Test
         @test length(pd) == length(d)
     end
 
-    @testset "string" begin
-        @test string(pd) == string(d)
-    end
-
     push!(pd, :buz => 10)
     @test pop!(pd, :buz, 20) == 10
     @test pop!(pd, :buz, 20) == 20
