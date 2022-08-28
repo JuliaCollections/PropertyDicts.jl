@@ -11,19 +11,28 @@ using Test
     sym_props = PropertyDict(:foo => 1, :bar => 2)
 
     nt = (d =1, )
-    pnt = pairs(nt)
-    ntpd = PropertyDict(pnt)
-    @test keys(PropertyDict(ntpd)) === keys(nt)
-    @test values(PropertyDict(ntpd)) === values(pnt)
-    @test propertynames(PropertyDict(ntpd)) === propertynames(nt)
-    @test empty!(PropertyDict(Dict("foo"=>1, :bar=>2))) isa PropertyDict
+    ntpd = PropertyDict(nt)
 
-    if isdefined(Base, :hasproperty)
-        @test hasproperty(sym_props, "bar")
-        @test hasproperty(str_props, :bar)
-        @test hasproperty(pd, :foo)
-        @test hasproperty(pd, "bar")
-    end
+    @test length(pd) == length(d)
+
+    @test values(PropertyDict(ntpd)) === values(nt)
+
+
+    @test empty!(PropertyDict(Dict("foo"=>1, :bar=>2))) isa PropertyDict
+    @test empty(pd) == PropertyDict(empty(d))
+
+    @test propertynames(PropertyDict(ntpd)) === propertynames(nt)
+
+    @test ntpd.d === nt.d
+    @test keys(PropertyDict(ntpd)) === keys(nt)
+    @test hasproperty(sym_props, "bar")
+    @test keytype(str_props) <: String
+    @test keytype(sym_props) <: Symbol
+    @test hasproperty(str_props, :bar)
+    @test hasproperty(pd, :foo)
+    @test hasproperty(pd, "bar")
+    @test haskey(pd, :foo)
+    @test getkey(pd, :buz, nothing) === nothing
 
     @testset "convert" begin
         expected = OrderedDict
@@ -81,17 +90,42 @@ using Test
         @test Base.IteratorEltype(pd) == Base.IteratorEltype(d)
     end
 
-    @testset "length" begin
-        @test length(pd) == length(d)
-    end
-
-    @testset "string" begin
-        @test string(pd) == string(d)
-    end
+    @test reverse(PropertyDict((a=1, b=2, c=3))) === PropertyDict(reverse((a=1, b=2, c=3)))
 
     push!(pd, :buz => 10)
-    @test pop!(pd, :buz, 20) == 10
+    @test pop!(pd, :buz) == 10
     @test pop!(pd, :buz, 20) == 20
     @test sizehint!(pd, 5) === pd
     @test get(pd, delete!(pd, "foo"), 10) == 10
+
+    @testset "NamedProperties" begin
+        pd = PropertyDict(x=1)
+        @test copy(pd) == pd
+        @test empty(pd) === PropertyDict()
+        @test pd[:x] == 1
+    end
+
+    @testset "merge & mergewith" begin
+        a = PropertyDict((a=1, b=2, c=3))
+        b = PropertyDict((b=4, d=5))
+        c = PropertyDict((a=1, b=2))
+        d = PropertyDict((b=3, c=(d=1,)))
+        e = PropertyDict((c=(d=2,),))
+        f = PropertyDict(Dict("foo"=>1, "bar"=>2))
+
+        @test merge(a) === a
+        @test f !== merge(f) == f
+        @test @inferred(merge(a, b)) == PropertyDict((a = 1, b = 4, c = 3, d = 5))
+        @test @inferred(merge(c, d, e)) == PropertyDict((a = 1, b = 3, c = (d = 2,)))
+        @test merge(a, f, c) == merge(f, a, c)
+
+        @test mergewith(+, a) == a
+        @test mergewith(+, f, f) == PropertyDict(Dict("foo"=>2, "bar"=>4))
+        @test mergewith(+, a, b) == PropertyDict(a=1, b=6, c=3, d=5)
+        combiner(x, y) = "$(x) and $(y)"
+        @test mergewith(combiner, a, f, c, PropertyDict()) ==
+            PropertyDict(:a=>"1 and 1",  :b=>"2 and 2",  :c=>3,  :bar=>2, :foo=>1)
+        @test @inferred(mergewith(combiner, a, b, c, PropertyDict())) ==
+            PropertyDict((a = "1 and 1", b = "2 and 4 and 2", c = 3, d = 5))
+    end
 end

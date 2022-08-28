@@ -1,10 +1,10 @@
 name = "PropertyDicts"
 uuid = "f8a19df8-e894-5f55-a973-672c1158cbca"
 license = "MIT"
-version = "0.1.2"
+version = "0.2"
 
 [compat]
-julia = "1"
+julia = "1.6"
 
 [extras]
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
