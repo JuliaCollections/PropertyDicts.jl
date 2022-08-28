@@ -23,12 +23,16 @@ using Test
 
     @test propertynames(PropertyDict(ntpd)) === propertynames(nt)
 
+    @test ntpd.d === nt.d
     @test keys(PropertyDict(ntpd)) === keys(nt)
     @test hasproperty(sym_props, "bar")
+    @test keytype(str_props) <: String
+    @test keytype(sym_props) <: Symbol
     @test hasproperty(str_props, :bar)
     @test hasproperty(pd, :foo)
     @test hasproperty(pd, "bar")
     @test haskey(pd, :foo)
+    @test getkey(pd, :buz, nothing) === nothing
 
     @testset "convert" begin
         expected = OrderedDict
@@ -108,6 +112,7 @@ using Test
         @test @inferred(merge(c, d, e)) == PropertyDict((a = 1, b = 3, c = (d = 2,)))
         @test merge(a, f, c) == merge(f, a, c)
 
+        @test mergewith(+, a, b) == PropertyDict(a=1, b=6, c=3, d=5)
         combiner(x, y) = "$(x) and $(y)"
         @test mergewith(combiner, a, f, c, PropertyDict()) ==
             PropertyDict(:a=>"1 and 1",  :b=>"2 and 2",  :c=>3,  :bar=>2, :foo=>1)

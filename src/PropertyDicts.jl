@@ -37,8 +37,8 @@ struct PropertyDict{K<:Union{String,Symbol}, V, D <: Union{AbstractDict,NamedTup
         end
         PropertyDict(dsym)
     end
-    PropertyDict() = PropertyDict(NamedTuple())
     PropertyDict(arg, args...) = PropertyDict(Dict(arg, args...))
+    PropertyDict(; kwargs...) = PropertyDict(values(kwargs))
 end
 
 const NamedProperties{syms,T<:Tuple,V} = PropertyDict{Symbol,V,NamedTuple{syms,T}}
