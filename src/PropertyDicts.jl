@@ -72,7 +72,7 @@ Base.isempty(pd::PropertyDict) = isempty(getfield(pd, :d))
 function Base.empty(pd::PropertyDict, ::Type{K}=keytype(pd), ::Type{V}=valtype(pd)) where {K,V}
     PropertyDict(empty(getfield(pd, :d), K, V))
 end
-Base.empty(pd::NamedProperties, ::Type{Symbol}, ::Type{Union{}}) = PropertyDict()
+Base.empty(pd::NamedProperties, ::Type{K}, ::Type{V}) where {K,V} = PropertyDict()
 
 function Base.delete!(pd::PropertyDict, k)
     delete!(getfield(pd, :d), _tokey(pd, k))
