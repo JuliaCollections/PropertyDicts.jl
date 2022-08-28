@@ -93,10 +93,17 @@ using Test
     @test reverse(PropertyDict((a=1, b=2, c=3))) === PropertyDict(reverse((a=1, b=2, c=3)))
 
     push!(pd, :buz => 10)
-    @test pop!(pd, :buz, 20) == 10
+    @test pop!(pd, :buz) == 10
     @test pop!(pd, :buz, 20) == 20
     @test sizehint!(pd, 5) === pd
     @test get(pd, delete!(pd, "foo"), 10) == 10
+
+    @testset "NamedProperties" begin
+        pd = PropertyDict(x=1)
+        @test copy(pd) == pd
+        @test empty(pd) === PropertyDict()
+        @test pd[:x] == 1
+    end
 
     @testset "merge & mergewith" begin
         a = PropertyDict((a=1, b=2, c=3))
@@ -112,6 +119,8 @@ using Test
         @test @inferred(merge(c, d, e)) == PropertyDict((a = 1, b = 3, c = (d = 2,)))
         @test merge(a, f, c) == merge(f, a, c)
 
+        @test mergewith(+, a) == a
+        @test mergewith(+, f, f) == PropertyDict(Dict("foo"=>2, "bar"=>4))
         @test mergewith(+, a, b) == PropertyDict(a=1, b=6, c=3, d=5)
         combiner(x, y) = "$(x) and $(y)"
         @test mergewith(combiner, a, f, c, PropertyDict()) ==
