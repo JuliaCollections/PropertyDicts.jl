@@ -126,10 +126,8 @@ Base.haskey(pd::PropertyDict, k) = haskey(getfield(pd, :d), _tokey(pd, k))
 Base.getkey(pd::PropertyDict, k, d) = getkey(getfield(pd, :d), _tokey(pd, k), d)
 Base.keys(pd::PropertyDict) = keys(getfield(pd, :d))
 
-@static if isdefined(Base, :hasproperty)
-    Base.hasproperty(pd::PropertyDict, k::Symbol) = haskey(pd, _tokey(pd, k))
-    Base.hasproperty(pd::PropertyDict, k::AbstractString) = haskey(pd, _tokey(pd, k))
-end
+Base.hasproperty(pd::PropertyDict, k::Symbol) = haskey(pd, _tokey(pd, k))
+Base.hasproperty(pd::PropertyDict, k::AbstractString) = haskey(pd, _tokey(pd, k))
 Base.propertynames(pd::PropertyDict) = keys(getfield(pd, :d))
 Base.getproperty(pd::NamedProperties, k::Symbol) = getfield(getfield(pd, :d), k)
 Base.getproperty(pd::PropertyDict, k::Symbol) = getindex(pd, k)
