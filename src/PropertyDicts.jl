@@ -2,6 +2,27 @@ module PropertyDicts
 
 export PropertyDict
 
+@static if !hasmethod(reverse, Tuple{NamedTuple})
+    Base.reverse(nt::NamedTuple) = NamedTuple{reverse(keys(nt))}(reverse(values(nt)))
+end
+@static if !hasmethod(mergewith, Tuple{Any,NamedTuple,NamedTuple})
+    function Base.mergewith(combine, a::NamedTuple{an}, b::NamedTuple{bn}) where {an, bn}
+        names = Base.merge_names(an, bn)
+        NamedTuple{names}(ntuple(Val{nfields(names)}()) do i
+            n = getfield(names, i)
+            if Base.sym_in(n, an)
+                if Base.sym_in(n, bn)
+                    combine(getfield(a, n), getfield(b, n))
+                else
+                    getfield(a, n)
+                end
+            else
+                getfield(b, n)
+            end
+        end)
+    end
+end
+
 struct PropertyDict{K<:Union{String,Symbol}, V, D <: Union{AbstractDict,NamedTuple}} <: AbstractDict{K, V}
     d::D
 
@@ -20,7 +41,7 @@ struct PropertyDict{K<:Union{String,Symbol}, V, D <: Union{AbstractDict,NamedTup
     PropertyDict(arg, args...) = PropertyDict(Dict(arg, args...))
 end
 
-Base.isempty(pd::PropertyDict) = isempty(getfield(pd, :d))
+const NamedProperties{syms,T<:Tuple,V} = PropertyDict{Symbol,V,NamedTuple{syms,T}}
 
 Base.IteratorSize(@nospecialize T::Type{<:PropertyDict}) = Base.IteratorSize(fieldtype(T, :d))
 Base.IteratorEltype(@nospecialize T::Type{<:PropertyDict}) = Base.IteratorEltype(eltype(T))
@@ -31,6 +52,9 @@ function Base.sizehint!(pd::PropertyDict, n::Integer)
     sizehint!(getfield(pd, :d), n)
     return pd
 end
+
+Base.keytype(@nospecialize T::Type{<:PropertyDict{String}}) = String
+Base.keytype(@nospecialize T::Type{<:PropertyDict{Symbol}}) = Symbol
 
 _tokey(@nospecialize(pd::PropertyDict{String}), k::AbstractString) = k
 _tokey(@nospecialize(pd::PropertyDict{String}), k) = String(k)
@@ -44,22 +68,30 @@ function Base.empty!(pd::PropertyDict)
     empty!(getfield(pd, :d))
     return pd
 end
+Base.isempty(pd::PropertyDict) = isempty(getfield(pd, :d))
+function Base.empty(pd::PropertyDict, ::Type{K}=keytype(pd), ::Type{V}=valtype(pd)) where {K,V}
+    PropertyDict(empty(getfield(pd, :d), K, V))
+end
+Base.empty(pd::NamedProperties, ::Type{Symbol}, ::Type{Union{}}) = PropertyDict()
+
 function Base.delete!(pd::PropertyDict, k)
     delete!(getfield(pd, :d), _tokey(pd, k))
     return pd
 end
-Base.empty(pd::PropertyDict) = PropertyDict(empty(getfield(pd, :d)))
 
-Base.get(pd::PropertyDict, k, d) = get(getfield(pd, :d), _tokey(pd, k), d)
+function Base.get(pd::PropertyDict, k, d)
+    get(getfield(pd, :d), _tokey(pd, k), d)
+end
 function Base.get(f::Union{Function,Type}, pd::PropertyDict, k)
     get(f, getfield(pd, :d), _tokey(pd, k))
 end
-Base.get!(pd::PropertyDict, k, d) = get!(getfield(pd, :d), _tokey(pd, k), d)
+function Base.get!(pd::PropertyDict, k, d)
+    get!(getfield(pd, :d), _tokey(pd, k), d)
+end
 function Base.get!(f::Union{Function,Type}, pd::PropertyDict, k)
     get!(f, getfield(pd, :d), _tokey(pd, k))
 end
-
-Base.@propagate_inbounds function Base.getindex(pd::PropertyDict{Symbol,V,<:NamedTuple}, k::Symbol) where {V}
+Base.@propagate_inbounds function Base.getindex(pd::NamedProperties, k::Symbol)
     getfield(getfield(pd, :d), k)
 end
 Base.@propagate_inbounds function Base.getindex(pd::PropertyDict, k)
@@ -69,132 +101,87 @@ Base.@propagate_inbounds function Base.setindex!(pd::PropertyDict, v, k)
     setindex!(getfield(pd, :d), v, _tokey(pd, k))
 end
 
-Base.haskey(pd::PropertyDict, k) = haskey(getfield(pd, :d), _tokey(pd, k))
+Base.reverse(pd::PropertyDict) = PropertyDict(reverse(getfield(pd, :d)))
 
-Base.getkey(pd::PropertyDict, k, d) = getkey(getfield(pd, :d), _tokey(pd, k), d)
-
-Base.reverse(pd::PropertyDict) = PropertyDict(getfield(pd, :d))
-
-@inline function Base.iterate(pd::PropertyDict{Symbol,V,<:NamedTuple}) where {V}
+@inline function Base.iterate(pd::NamedProperties)
     if isempty(pd)
         nothing
     else
-        Pair{Symbol,V}(getfield(keys(pd), 1), getfield(getfield(pd, :d), 1)), 2
+        Pair{Symbol,valtype(pd)}(getfield(keys(pd), 1), getfield(getfield(pd, :d), 1)), 2
     end
 end
-@inline function Base.iterate(pd::PropertyDict{Symbol,V,<:NamedTuple}, s::Int) where {V}
+@inline function Base.iterate(pd::NamedProperties, s::Int) where {V}
     if length(pd) < s
         nothing
     else
-        Pair{Symbol,V}(getfield(keys(getfield(pd, :d)), s), getfield(getfield(pd, :d), s)), s + 1
+        Pair{Symbol,valtype(pd)}(getfield(keys(getfield(pd, :d)), s), getfield(getfield(pd, :d), s)), s + 1
     end
 end
 Base.iterate(pd::PropertyDict) = iterate(getfield(pd, :d))
 Base.iterate(pd::PropertyDict, i) = iterate(getfield(pd, :d), i)
 
-# a handful of dictionaries aren't just wrapped in `KeySet` and `ValueIterator`
-Base.keys(pd::PropertyDict) = keys(getfield(pd, :d))
 Base.values(pd::PropertyDict) = values(getfield(pd, :d))
 
-## property methods
-function Base.getproperty(pd::PropertyDict{Symbol,V,<:NamedTuple}, k::Symbol) where {V}
-    getfield(getfield(pd, :d), k)
-end
-Base.getproperty(pd::PropertyDict, k::Symbol) = getindex(pd, k)
-Base.getproperty(pd::PropertyDict, k::String) = getindex(pd, k)
-
-Base.setproperty!(pd::PropertyDict, k::Symbol, v) = setindex!(pd, v, k)
-Base.setproperty!(pd::PropertyDict, k::String, v) = setindex!(pd, v, k)
-
-Base.propertynames(pd::PropertyDict) = keys(getfield(pd, :d))
+Base.haskey(pd::PropertyDict, k) = haskey(getfield(pd, :d), _tokey(pd, k))
+Base.getkey(pd::PropertyDict, k, d) = getkey(getfield(pd, :d), _tokey(pd, k), d)
+Base.keys(pd::PropertyDict) = keys(getfield(pd, :d))
 
 @static if isdefined(Base, :hasproperty)
     Base.hasproperty(pd::PropertyDict, k::Symbol) = haskey(pd, _tokey(pd, k))
-    Base.hasproperty(pd::PropertyDict, k) = haskey(pd, _tokey(pd, k))
+    Base.hasproperty(pd::PropertyDict, k::AbstractString) = haskey(pd, _tokey(pd, k))
 end
+Base.propertynames(pd::PropertyDict) = keys(getfield(pd, :d))
+Base.getproperty(pd::NamedProperties, k::Symbol) = getfield(getfield(pd, :d), k)
+Base.getproperty(pd::PropertyDict, k::Symbol) = getindex(pd, k)
+Base.getproperty(pd::PropertyDict, k::String) = getindex(pd, k)
+Base.setproperty!(pd::PropertyDict, k::Symbol, v) = setindex!(pd, v, k)
+Base.setproperty!(pd::PropertyDict, k::String, v) = setindex!(pd, v, k)
 
-Base.copy(pd::PropertyDict{Symbol,<:Any,<:NamedTuple}) = pd
+Base.copy(pd::NamedProperties) = pd
 Base.copy(pd::PropertyDict) = PropertyDict(copy(getfield(pd, :d)))
 
-_promote_key(::Type{String}, ::Type{String}) = String
-_promote_key(::Type{Symbol}, ::Type{Symbol}) = Symbol
-_promote_key(::Type{Symbol}, ::Type{String}) = Symbol
-_promote_key(::Type{String}, ::Type{Symbol}) = Symbol
-_promote_keytypes(K::Union{Type{String},Type{Symbol}}) = K
-function _promote_keytypes(K::Union{Type{String},Type{Symbol}}, d, ds...)
-    _promote_valtypes(_promote_key(K, keytype(d)), ds...)
+## merge and mergewith
+Base.merge(pd::PropertyDict) = copy(pd)
+Base.merge(pd::NamedProperties, pds::NamedProperties...) = _mergeprops(_getarg2, pd, pds...)
+_getarg2(@nospecialize(arg1), @nospecialize(arg2)) = arg2
+function Base.merge(pd::PropertyDict, pds::PropertyDict...)
+    K = _promote_keytypes((pd, pds...))
+    V = _promote_valtypes(valtype(pd), pds...)
+    out = PropertyDict(Dict{K,V}())
+    for (k,v) in pd
+        out[k] = v
+    end
+    merge!(out, pds...)
 end
+
+Base.mergewith(combine, pd::PropertyDict) = copy(pd)
+function Base.mergewith(combine, pd::PropertyDict, pds::PropertyDict...)
+    K = _promote_keytypes((pd, pds...))
+    V0 = _promote_valtypes(valtype(pd), pds...)
+    V = promote_type(Core.Compiler.return_type(combine, Tuple{V0,V0}), V0)
+    out = PropertyDict(Dict{K,V}())
+    for (k,v) in pd
+        out[k] = v
+    end
+    mergewith!(combine, out, pds...)
+end
+@inline function Base.mergewith(combine, pd::NamedProperties, pds::NamedProperties...)
+    _mergeprops(combine, pd, pds...)
+end
+_mergeprops(combine, @nospecialize(x::NamedProperties)) = x
+@inline function _mergeprops(combine, x::NamedProperties, y::NamedProperties)
+    PropertyDict(mergewith(combine, getfield(x, :d), getfield(y, :d)))
+end
+@inline function _mergeprops(combine, x::NamedProperties, y::NamedProperties, zs::NamedProperties...)
+    _mergeprops(combine, _mergeprops(combine, x, y), zs...)
+end
+
+# fall back to Symbol if we don't clearly have String
+_promote_keytypes(@nospecialize(pds::Tuple{Vararg{PropertyDict{String}}})) = String
+_promote_keytypes(@nospecialize(pds::Tuple{Vararg{PropertyDict}})) = Symbol
 _promote_valtypes(V) = V
 function _promote_valtypes(V, d, ds...)  # give up if promoted to any
     V === Any ? Any : _promote_valtypes(promote_type(V, valtype(d)), ds...)
-end
-
-## merge
-Base.merge(pd::PropertyDict) = copy(pd)
-function Base.merge(pd::PropertyDict, others::PropertyDict...)
-    K = _promote_keytypes(keytype(pd), others...)
-    V = _promote_valtypes(valtype(pd), others...)
-    out = PropertyDict(Dict{K,V}())
-    for (k, v) in pairs(getfield(pd, :d))
-        out[k] = v
-    end
-    merge!(out, others...)
-end
-function Base.merge(x::PropertyDict{Symbol,<:Any,<:NamedTuple}, y::PropertyDict{Symbol,<:Any,<:NamedTuple}, zs::PropertyDict{Symbol,<:Any,<:NamedTuple}...)
-    merge(merge(x, y), zs...)
-end
-function Base.merge(x::PropertyDict{Symbol,<:Any,<:NamedTuple}, y::PropertyDict{Symbol,<:Any,<:NamedTuple})
-    PropertyDict(merge(getfield(x, :d), getfield(y, :d)))
-end
-
-## mergewith
-Base.mergewith(combine, pd::PropertyDict) = copy(pd)
-function Base.mergewith(combine, pd::PropertyDict, others::PropertyDict...)
-    K = _promote_keytypes(keytype(pd), others...)
-    V = _promote_valtypes(valtype(pd), others...)
-    out = PropertyDict(Dict{K,promote_type(Core.Compiler.return_type(combine, Tuple{V,V}), V)}())
-    for (k, v) in pd
-        out[k] = v
-    end
-    mergewith!(combine, out, others...)
-end
-function Base.mergewith(combine, x::PropertyDict{Symbol,<:Any,<:NamedTuple}, y::PropertyDict{Symbol,<:Any,<:NamedTuple}, zs::PropertyDict{Symbol,<:Any,<:NamedTuple}...)
-    _mergewith(combine, getfield(x, :d), getfield(y, :d))
-end
-function Base.mergewith(combine, x::PropertyDict{Symbol,<:Any,<:NamedTuple}, y::PropertyDict{Symbol,<:Any,<:NamedTuple})
-    _mergewith(combine, getfield(x, :d), getfield(y, :d))
-end
-function _mergewith(combine, a::NamedTuple{an}, b::NamedTuple{bn}) where {an, bn}
-    if @generated
-        names = Base.merge_names(an, bn)
-        t = Expr(:tuple)
-        for n in names
-            if Base.sym_in(n, an)
-                if Base.sym_in(n, bn)
-                    push!(t.args, :(combine(getfield(a, $(QuoteNode(n))), getfield(b, $(QuoteNode(n))))))
-                else
-                    push!(t.args, :(getfield(a, $(QuoteNode(n)))))
-                end
-            else
-                push!(t.args, :(getfield(b, $(QuoteNode(n)))))
-            end
-        end
-        :(NamedTuple{$names}($(t)))
-    else
-        names = Base.merge_names(an, bn)
-        NamedTuple{names}(ntuple(Val{nfields(names)}()) do i
-            n = getfield(names, i)
-            if Base.sym_in(n, an)
-                if Base.sym_in(n, bn)
-                    combine(getfield(a, n), getfield(b, n))
-                else
-                    getfield(a, n)
-                end
-            else
-                getfield(b, n)
-            end
-        end)
-    end
 end
 
 end # module PropertyDicts
