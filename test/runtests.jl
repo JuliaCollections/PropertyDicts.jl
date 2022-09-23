@@ -3,14 +3,19 @@ using PropertyDicts
 using Test
 
 @testset "constructors" begin
-    strpd = PropertyDict{String}("foo" => 1, "bar" => 2)
-    sympd = PropertyDict{Symbol}(foo = 1, bar = 2)
+    @test isa(PropertyDict{Symbol}(PropertyDict(foo = 1, bar = 2)), PropertyDict{Symbol})
+    @test isa(PropertyDict{Symbol,Int}(PropertyDict(foo = 1, bar = 2)), PropertyDict{Symbol,Int})
+    @test isa(PropertyDict{Symbol,Int}(PropertyDict(foo = 1, bar = 2)), PropertyDict{Symbol, Int64, NamedTuple{(:foo, :bar), Tuple{Int64, Int64}}})
+    @test isa(PropertyDict{Symbol,Int}(foo = 1, bar = 2.0), PropertyDict{Symbol, Int64, NamedTuple{(:foo, :bar), Tuple{Int64, Int64}}})
+    @test isa(PropertyDict{Symbol,Int}(foo = 1, bar = 2.0), PropertyDict{Symbol,Int})
+    @test isa(PropertyDict{Symbol,Int}(Dict{Symbol,Int}()), PropertyDict{Symbol,Int})
+    @test isa(PropertyDict{Symbol,Int}(PropertyDict{Symbol}(foo = 1, bar = 2.0)), PropertyDict{Symbol,Int})
+    @test isa(PropertyDict{Symbol,Int}(Dict(:foo => 1, :bar => 2)), PropertyDict{Symbol,Int})
 
-    @test PropertyDict{String}(strpd) == strpd
-    @test sympd ==
-          PropertyDict{Symbol}(sympd) ==
-          PropertyDict{Symbol,Int}(sympd) ==
-          PropertyDict{Symbol,Int}(foo = 1, bar = 2.0) # convert eltype of NamedTuple at construction
+    @test isa(PropertyDict{String}("foo" => 1, "bar" => 2), PropertyDict{String,Int,Dict{String,Int}})
+    @test isa(PropertyDict{String,Int}(Dict("foo" => 1, "bar" => 2)), PropertyDict{String,Int,Dict{String,Int}})
+    # don't nest PropertyDict
+    @test isa(PropertyDict{String,Int}(PropertyDict{String,Int}(Dict("foo" => 1, "bar" => 2))), PropertyDict{String,Int,Dict{String,Int}})
 end
 
 d = Dict("foo"=>1, :bar=>2)
