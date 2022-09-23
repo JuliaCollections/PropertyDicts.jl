@@ -23,20 +23,52 @@ end
     end
 end
 
-struct PropertyDict{K<:Union{String,Symbol}, V, D <: Union{AbstractDict,NamedTuple}} <: AbstractDict{K, V}
+struct PropertyDict{K<:Union{String,Symbol}, V, D <: Union{AbstractDict{K,V},NamedTuple{<:Any,<:Tuple{Vararg{V}}}}} <: AbstractDict{K, V}
     d::D
 
-    PropertyDict(@nospecialize pd::PropertyDict) = pd
-    PropertyDict(d::AbstractDict{String,V}) where {V} = new{String,V,typeof(d)}(d)
-    PropertyDict(d::AbstractDict{Symbol,V}) where {V} = new{Symbol,V,typeof(d)}(d)
-    PropertyDict(nt::NamedTuple) = new{Symbol,eltype(nt),typeof(nt)}(nt)
-    function PropertyDict(d::AbstractDict)
-        dsym = Dict{Symbol,valtype(d)}()
+    # PropertyDict{K,V}(args...)
+    PropertyDict{K,V}(d::AbstractDict{K,V}) where {K,V} = new{K,V,typeof(d)}(d)
+    function PropertyDict{K,V}(d::AbstractDict) where {K,V}
+        dsym = Dict{K,V}()
         for (k,v) in d
-            dsym[Symbol(k)] = v
+            dsym[K(k)] = v
         end
         PropertyDict(dsym)
     end
+    PropertyDict{K,V}(d::PropertyDict{K,V}) where {K,V} = d
+    function PropertyDict{K,V}(@nospecialize(d::PropertyDict)) where {K,V}
+        PropertyDict{K,V}(getfield(d, :d))
+    end
+    function PropertyDict{Symbol,V}(nt::NamedTuple{syms,<:Tuple{Vararg{V}}}) where {syms,V}
+        new{Symbol,V,typeof(nt)}(nt)
+    end
+    function PropertyDict{Symbol,V}(nt::NamedTuple{syms}) where {V,syms}
+        PropertyDict{Symbol,V}(NamedTuple{syms}(Tuple{Vararg{V}}(Tuple(nt))))
+    end
+    PropertyDict{K,V}(arg, args...) where {K,V} = PropertyDict{K,V}(Dict(arg, args...))
+    PropertyDict{K,V}(; kwargs...) where {K,V} = PropertyDict{K,V}(values(kwargs))
+
+    # PropertyDict{K}(args...)
+    PropertyDict{K}(@nospecialize(d::AbstractDict)) where {K} = PropertyDict{K,valtype(d)}(d)
+    function PropertyDict{String}(@nospecialize(d::AbstractDict{String}))
+        new{String,valtype(d),typeof(d)}(d)
+    end
+    function PropertyDict{Symbol}(@nospecialize(d::AbstractDict{Symbol}))
+        new{Symbol,valtype(d),typeof(d)}(d)
+    end
+    PropertyDict{Symbol}(@nospecialize(d::NamedTuple)) = new{Symbol,eltype(d),typeof(d)}(d)
+    PropertyDict{Symbol}(@nospecialize(pd::PropertyDict{Symbol})) = pd
+    PropertyDict{String}(@nospecialize(pd::PropertyDict{String})) = pd
+    PropertyDict{K}(arg, args...) where {K} = PropertyDict{K}(Dict(arg, args...))
+    PropertyDict{K}(; kwargs...) where {K} = PropertyDict{K}(values(kwargs))
+
+    # PropertyDict(args...)
+    PropertyDict(@nospecialize pd::PropertyDict) = pd
+    PropertyDict(@nospecialize d::AbstractDict{String}) = PropertyDict{String}(d)
+    function PropertyDict(@nospecialize d::Union{AbstractDict{Symbol},NamedTuple})
+        PropertyDict{Symbol}(d)
+    end
+    PropertyDict(@nospecialize d::AbstractDict) = PropertyDict{Symbol}(d)
     PropertyDict(arg, args...) = PropertyDict(Dict(arg, args...))
     PropertyDict(; kwargs...) = PropertyDict(values(kwargs))
 end
@@ -68,11 +100,15 @@ function Base.empty!(pd::PropertyDict)
     empty!(getfield(pd, :d))
     return pd
 end
+Base.isempty(::NamedProperties{(),Tuple{},Union{}}) = true
+Base.isempty(@nospecialize(npd::NamedProperties)) = false
 Base.isempty(pd::PropertyDict) = isempty(getfield(pd, :d))
 function Base.empty(pd::PropertyDict, ::Type{K}=keytype(pd), ::Type{V}=valtype(pd)) where {K,V}
     PropertyDict(empty(getfield(pd, :d), K, V))
 end
-Base.empty(pd::NamedProperties, ::Type{K}, ::Type{V}) where {K,V} = PropertyDict()
+function Base.empty(@nospecialize(pd::NamedProperties), ::Type{K}, ::Type{V}) where {K,V}
+    PropertyDict()
+end
 
 function Base.delete!(pd::PropertyDict, k)
     delete!(getfield(pd, :d), _tokey(pd, k))
@@ -131,9 +167,9 @@ Base.hasproperty(pd::PropertyDict, k::AbstractString) = haskey(pd, _tokey(pd, k)
 Base.propertynames(pd::PropertyDict) = keys(getfield(pd, :d))
 Base.getproperty(pd::NamedProperties, k::Symbol) = getfield(getfield(pd, :d), k)
 Base.getproperty(pd::PropertyDict, k::Symbol) = getindex(pd, k)
-Base.getproperty(pd::PropertyDict, k::String) = getindex(pd, k)
+Base.getproperty(pd::PropertyDict, k::AbstractString) = getindex(pd, k)
 Base.setproperty!(pd::PropertyDict, k::Symbol, v) = setindex!(pd, v, k)
-Base.setproperty!(pd::PropertyDict, k::String, v) = setindex!(pd, v, k)
+Base.setproperty!(pd::PropertyDict, k::AbstractString, v) = setindex!(pd, v, k)
 
 Base.copy(pd::NamedProperties) = pd
 Base.copy(pd::PropertyDict) = PropertyDict(copy(getfield(pd, :d)))
