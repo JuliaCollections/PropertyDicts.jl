@@ -150,7 +150,7 @@ Base.reverse(pd::PropertyDict) = PropertyDict(reverse(getfield(pd, :d)))
         Pair{Symbol,valtype(pd)}(getfield(keys(pd), 1), getfield(getfield(pd, :d), 1)), 2
     end
 end
-@inline function Base.iterate(pd::NamedProperties, s::Int) where {V}
+@inline function Base.iterate(pd::NamedProperties, s::Int)
     if length(pd) < s
         nothing
     else
