@@ -27,18 +27,19 @@ struct PropertyDict{K<:Union{String,Symbol}, V, D <: Union{AbstractDict{K,V},Nam
     d::D
 
     # PropertyDict{K,V}(args...)
-    PropertyDict{Symbol,V}(d::AbstractDict{K,V}) where {V} = new{Symbol,V,typeof(d)}(d)
-    PropertyDict{String,V}(d::AbstractDict{K,V}) where {V} = new{String,V,typeof(d)}(d)
+    PropertyDict{Symbol,V}(d::AbstractDict{Symbol,V}) where {V} = new{Symbol,V,typeof(d)}(d)
+    PropertyDict{String,V}(d::AbstractDict{String,V}) where {V} = new{String,V,typeof(d)}(d)
+    PropertyDict{Symbol,V}(pd::PropertyDict{Symbol,V}) where {V} = pd
+    PropertyDict{String,V}(pd::PropertyDict{String,V}) where {V} = pd
+    function PropertyDict{K,V}(@nospecialize d::PropertyDict) where {K,V}
+        PropertyDict{K,V}(getfield(d, :d))
+    end
     function PropertyDict{K,V}(d::AbstractDict) where {K,V}
         dsym = PropertyDict(Dict{K,V}())
         for (k,v) in d
             dsym[K(k)] = v
         end
         dsym
-    end
-    PropertyDict{K,V}(d::PropertyDict{K,V}) where {K,V} = d
-    function PropertyDict{K,V}(@nospecialize(d::PropertyDict)) where {K,V}
-        PropertyDict{K,V}(getfield(d, :d))
     end
     function PropertyDict{Symbol,V}(nt::NamedTuple{syms,<:Tuple{Vararg{V}}}) where {syms,V}
         new{Symbol,V,typeof(nt)}(nt)

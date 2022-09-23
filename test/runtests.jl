@@ -1,4 +1,4 @@
-sing OrderedCollections: OrderedDict
+using OrderedCollections: OrderedDict
 using PropertyDicts
 using Test
 
@@ -10,7 +10,7 @@ using Test
     @test sympd ==
           PropertyDict{Symbol}(sympd) ==
           PropertyDict{Symbol,Int}(sympd) ==
-          PropertyDict{Symbol,Int}(foo = 1, y = 2.0) # convert eltype of NamedTuple at construction
+          PropertyDict{Symbol,Int}(foo = 1, bar = 2.0) # convert eltype of NamedTuple at construction
 end
 
 d = Dict("foo"=>1, :bar=>2)
