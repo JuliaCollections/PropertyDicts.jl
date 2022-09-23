@@ -27,13 +27,14 @@ struct PropertyDict{K<:Union{String,Symbol}, V, D <: Union{AbstractDict{K,V},Nam
     d::D
 
     # PropertyDict{K,V}(args...)
-    PropertyDict{K,V}(d::AbstractDict{K,V}) where {K,V} = new{K,V,typeof(d)}(d)
+    PropertyDict{Symbol,V}(d::AbstractDict{K,V}) where {V} = new{Symbol,V,typeof(d)}(d)
+    PropertyDict{String,V}(d::AbstractDict{K,V}) where {V} = new{String,V,typeof(d)}(d)
     function PropertyDict{K,V}(d::AbstractDict) where {K,V}
-        dsym = Dict{K,V}()
+        dsym = PropertyDict(Dict{K,V}())
         for (k,v) in d
             dsym[K(k)] = v
         end
-        PropertyDict(dsym)
+        dsym
     end
     PropertyDict{K,V}(d::PropertyDict{K,V}) where {K,V} = d
     function PropertyDict{K,V}(@nospecialize(d::PropertyDict)) where {K,V}
@@ -49,7 +50,9 @@ struct PropertyDict{K<:Union{String,Symbol}, V, D <: Union{AbstractDict{K,V},Nam
     PropertyDict{K,V}(; kwargs...) where {K,V} = PropertyDict{K,V}(values(kwargs))
 
     # PropertyDict{K}(args...)
-    PropertyDict{K}(@nospecialize(d::AbstractDict)) where {K} = PropertyDict{K,valtype(d)}(d)
+    function PropertyDict{K}(@nospecialize(d::AbstractDict)) where {K}
+        PropertyDict{K,valtype(d)}(d)
+    end
     function PropertyDict{String}(@nospecialize(d::AbstractDict{String}))
         new{String,valtype(d),typeof(d)}(d)
     end
