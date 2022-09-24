@@ -12,11 +12,15 @@ using Test
     @test isa(PropertyDict{Symbol,Int}(PropertyDict{Symbol}(foo = 1, bar = 2.0)), PropertyDict{Symbol,Int})
     @test isa(PropertyDict{Symbol,Int}(Dict(:foo => 1, :bar => 2)), PropertyDict{Symbol,Int})
 
-    @test isa(PropertyDict{String}("foo" => 1, "bar" => 2), PropertyDict{String,Int,Dict{String,Int}})
+    @test isa(PropertyDict{String}("foo" => 1, "bar" => 2, "buz" => 3), PropertyDict{String,Int,Dict{String,Int}})
     @test isa(PropertyDict{String,Int}(Dict("foo" => 1, "bar" => 2)), PropertyDict{String,Int,Dict{String,Int}})
-    # don't nest PropertyDict
+    @test isa(PropertyDict{String}(PropertyDict{String,Int}("foo" => 1, "bar" => 2)), PropertyDict{String,Int,Dict{String,Int}})
     @test isa(PropertyDict{String,Int}(PropertyDict{String,Int}(Dict("foo" => 1, "bar" => 2))), PropertyDict{String,Int,Dict{String,Int}})
 end
+
+#  PropertyDict{K,V}(arg, args...) where {K,V} = PropertyDict{K,V}(Dict(arg, args...))
+#  PropertyDict{String}(@nospecialize(pd::PropertyDict{String})) = pd
+
 
 d = Dict("foo"=>1, :bar=>2)
 _keys = collect(keys(d))
@@ -135,6 +139,7 @@ end
     @test merge(a, f, c) == merge(f, a, c)
 
     @test mergewith(+, a) == a
+    @test mergewith(+, f) == PropertyDict(Dict("foo"=>1, "bar"=>2))
     @test mergewith(+, f, f) == PropertyDict(Dict("foo"=>2, "bar"=>4))
     @test mergewith(+, a, b) == PropertyDict(a=1, b=6, c=3, d=5)
     combiner(x, y) = "$(x) and $(y)"
