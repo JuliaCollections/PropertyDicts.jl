@@ -79,6 +79,16 @@ end
 
 const NamedProperties{syms,T<:Tuple,V} = PropertyDict{Symbol,V,NamedTuple{syms,T}}
 
+@inline function Base.setindex(npd::NamedProperties{syms}, v, key::Symbol) where {syms}
+    nt = getfield(npd, :d)
+    idx = Base.fieldindex(typeof(nt), key, false)
+    if idx === 0
+        return PropertyDict(NamedTuple{(syms..., key)}((values(nt)..., v)))
+    else
+        return PropertyDict(NamedTuple{syms}(ntuple(i -> idx === i ? v : getfield(nt, i), Val{nfields(syms)}())))
+    end
+end
+
 Base.IteratorSize(@nospecialize T::Type{<:PropertyDict}) = Base.IteratorSize(fieldtype(T, :d))
 Base.IteratorEltype(@nospecialize T::Type{<:PropertyDict}) = Base.IteratorEltype(eltype(T))
 

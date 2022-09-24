@@ -148,3 +148,9 @@ end
     @test @inferred(mergewith(combiner, a, b, c, PropertyDict())) ==
         PropertyDict((a = "1 and 1", b = "2 and 4 and 2", c = 3, d = 5))
 end
+
+@testset "setindex" begin
+    npd = Base.setindex(Base.setindex(PropertyDict(), 1, :x), 2, :y)
+    @test values(npd) == (1, 2)
+    @test keys(npd) == (:x, :y)
+end
