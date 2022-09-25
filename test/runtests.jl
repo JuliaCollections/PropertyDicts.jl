@@ -143,8 +143,10 @@ end
         PropertyDict((a = "1 and 1", b = "2 and 4 and 2", c = 3, d = 5))
 end
 
-@testset "setindex" begin
-    npd = Base.setindex(Base.setindex(PropertyDict(), 1, :x), 2, :y)
-    @test values(npd) == (1, 2)
-    @test keys(npd) == (:x, :y)
+@testset "non-mutating modifiers" begin
+    pd1 = Base.setindex(PropertyDict(), 1, :x)
+    pd2 = Base.setindex(pd1, 2, :y)
+    @test values(pd2) == (1, 2)
+    @test keys(pd2) == (:x, :y)
+    @test PropertyDicts.delete(pd2, :y) == pd1
 end

@@ -2,6 +2,7 @@ module PropertyDicts
 
 export PropertyDict
 
+#region catch Julia versions missing these
 @static if !hasmethod(mergewith, Tuple{Any,NamedTuple,NamedTuple})
     function Base.mergewith(combine, a::NamedTuple{an}, b::NamedTuple{bn}) where {an, bn}
         names = Base.merge_names(an, bn)
@@ -19,6 +20,72 @@ export PropertyDict
         end)
     end
 end
+@static if !hasmethod(Base.setindex, Tuple{AbstractDict,Any,Any})
+    function setindex(d::Base.ImmutableDict, v, k)
+        if isdefined(d, :parent)
+            if isequal(d.key, k)
+                d0 = d.parent
+                v0 = v
+                k0 = k
+            else
+                d0 = setindex(d.parent, v, k)
+                v0 = d.value
+                k0 = d.key
+            end
+        else
+            d0 = d
+            v0 = v
+            k0 = k
+        end
+        K = promote_type(keytype(d0), typeof(k0))
+        V = promote_type(valtype(d0), typeof(v0))
+        Base.ImmutableDict{K,V}(d0, k0, v0)
+    end
+    function setindex(src::AbstractDict{K,V}, val::V, key::K) where {K,V}
+        dst = copy(src)
+        dst[key] = val
+        return dst
+    end
+    function setindex(src::AbstractDict{K,V}, val, key) where {K,V}
+        dst = empty(src, promote_type(K,typeof(key)), promote_type(V,typeof(val)))
+        if haslength(src)
+            sizehint!(dst, length(src))
+        end
+        for (k,v) in src
+            dst[k] = v
+        end
+        dst[key] = val
+        return dst
+    end
+end
+if isdefined(Base, :delete)
+    import Base: delete
+else
+    delete(collection, k) = delete!(copy(collection), k)
+    function delete(d::Base.ImmutableDict{K,V}, key) where {K,V}
+        if isdefined(d, :parent)
+            if isequal(d.key, key)
+                d.parent
+            else
+                Base.ImmutableDict{K,V}(delete(d.parent, key), d.key, d.value)
+            end
+        else
+            d
+        end
+    end
+    function delete(nt::NamedTuple{syms}, key::Symbol) where {syms}
+        idx = Base.fieldindex(typeof(nt), key, false)
+        if idx === 0
+            return nt
+        else
+            nv = Val{nfields(syms) - 1}()
+            NamedTuple{
+                ntuple(j -> j < idx ? getfield(syms, j) : getfield(syms, j + 1), nv)
+            }(ntuple(j -> j < idx ? getfield(nt, j) : getfield(nt, j + 1), nv))
+        end
+    end
+end
+#endregion
 
 struct PropertyDict{K<:Union{String,Symbol}, V, D <: Union{AbstractDict{K,V},NamedTuple{<:Any,<:Tuple{Vararg{V}}}}} <: AbstractDict{K, V}
     d::D
@@ -76,14 +143,11 @@ end
 
 const NamedProperties{syms,T<:Tuple,V} = PropertyDict{Symbol,V,NamedTuple{syms,T}}
 
-@inline function Base.setindex(npd::NamedProperties{syms}, v, key::Symbol) where {syms}
-    nt = getfield(npd, :d)
-    idx = Base.fieldindex(typeof(nt), key, false)
-    if idx === 0
-        return PropertyDict(NamedTuple{(syms..., key)}((values(nt)..., v)))
-    else
-        return PropertyDict(NamedTuple{syms}(ntuple(i -> idx === i ? v : getfield(nt, i), Val{nfields(syms)}())))
-    end
+@inline function Base.setindex(pd::PropertyDict, val, key::Union{Symbol,AbstractString})
+    Base.setindex(getfield(pd, :d), val, _tokey(pd, key))
+end
+@inline function delete(pd::PropertyDict, key::Union{Symbol,AbstractString})
+    delete(getfield(pd, :d), _tokey(pd, key))
 end
 
 Base.IteratorSize(@nospecialize T::Type{<:PropertyDict}) = Base.IteratorSize(fieldtype(T, :d))
@@ -100,9 +164,9 @@ Base.keytype(@nospecialize T::Type{<:PropertyDict{String}}) = String
 Base.keytype(@nospecialize T::Type{<:PropertyDict{Symbol}}) = Symbol
 
 _tokey(@nospecialize(pd::PropertyDict{String}), k::AbstractString) = k
-_tokey(@nospecialize(pd::PropertyDict{String}), k::Symbol) = String(k)
+_tokey(@nospecialize(pd::PropertyDict{String}), k) = String(k)
 _tokey(@nospecialize(pd::PropertyDict{Symbol}), k::Symbol) = k
-_tokey(@nospecialize(pd::PropertyDict{Symbol}), k::AbstractString) = Symbol(k)
+_tokey(@nospecialize(pd::PropertyDict{Symbol}), k) = Symbol(k)
 
 Base.pop!(pd::PropertyDict, k) = pop!(getfield(pd, :d), _tokey(pd, k))
 Base.pop!(pd::PropertyDict, k, d) = pop!(getfield(pd, :d), _tokey(pd, k), d)
@@ -126,15 +190,11 @@ function Base.delete!(pd::PropertyDict, k)
     return pd
 end
 
-function Base.get(pd::PropertyDict, k, d)
-    get(getfield(pd, :d), _tokey(pd, k), d)
-end
+Base.get(pd::PropertyDict, k, d) = get(getfield(pd, :d), _tokey(pd, k), d)
 function Base.get(f::Union{Function,Type}, pd::PropertyDict, k)
     get(f, getfield(pd, :d), _tokey(pd, k))
 end
-function Base.get!(pd::PropertyDict, k, d)
-    get!(getfield(pd, :d), _tokey(pd, k), d)
-end
+Base.get!(pd::PropertyDict, k, d) = get!(getfield(pd, :d), _tokey(pd, k), d)
 function Base.get!(f::Union{Function,Type}, pd::PropertyDict, k)
     get!(f, getfield(pd, :d), _tokey(pd, k))
 end
