@@ -18,10 +18,6 @@ using Test
     @test isa(PropertyDict{String,Int}(PropertyDict{String,Int}(Dict("foo" => 1, "bar" => 2))), PropertyDict{String,Int,Dict{String,Int}})
 end
 
-#  PropertyDict{K,V}(arg, args...) where {K,V} = PropertyDict{K,V}(Dict(arg, args...))
-#  PropertyDict{String}(@nospecialize(pd::PropertyDict{String})) = pd
-
-
 d = Dict("foo"=>1, :bar=>2)
 _keys = collect(keys(d))
 pd = PropertyDict(d)
@@ -108,8 +104,6 @@ end
 @testset "iteratoreltype" begin
     @test Base.IteratorEltype(pd) == Base.IteratorEltype(d)
 end
-
-@test reverse(PropertyDict((a=1, b=2, c=3))) === PropertyDict(reverse((a=1, b=2, c=3)))
 
 push!(pd, :buz => 10)
 @test pop!(pd, :buz) == 10

@@ -2,9 +2,6 @@ module PropertyDicts
 
 export PropertyDict
 
-@static if !hasmethod(reverse, Tuple{NamedTuple})
-    Base.reverse(nt::NamedTuple) = NamedTuple{reverse(keys(nt))}(reverse(values(nt)))
-end
 @static if !hasmethod(mergewith, Tuple{Any,NamedTuple,NamedTuple})
     function Base.mergewith(combine, a::NamedTuple{an}, b::NamedTuple{bn}) where {an, bn}
         names = Base.merge_names(an, bn)
@@ -103,9 +100,9 @@ Base.keytype(@nospecialize T::Type{<:PropertyDict{String}}) = String
 Base.keytype(@nospecialize T::Type{<:PropertyDict{Symbol}}) = Symbol
 
 _tokey(@nospecialize(pd::PropertyDict{String}), k::AbstractString) = k
-_tokey(@nospecialize(pd::PropertyDict{String}), k) = String(k)
+_tokey(@nospecialize(pd::PropertyDict{String}), k::Symbol) = String(k)
 _tokey(@nospecialize(pd::PropertyDict{Symbol}), k::Symbol) = k
-_tokey(@nospecialize(pd::PropertyDict{Symbol}), k) = Symbol(k)
+_tokey(@nospecialize(pd::PropertyDict{Symbol}), k::AbstractString) = Symbol(k)
 
 Base.pop!(pd::PropertyDict, k) = pop!(getfield(pd, :d), _tokey(pd, k))
 Base.pop!(pd::PropertyDict, k, d) = pop!(getfield(pd, :d), _tokey(pd, k), d)
@@ -150,8 +147,6 @@ end
 Base.@propagate_inbounds function Base.setindex!(pd::PropertyDict, v, k)
     setindex!(getfield(pd, :d), v, _tokey(pd, k))
 end
-
-Base.reverse(pd::PropertyDict) = PropertyDict(reverse(getfield(pd, :d)))
 
 @inline function Base.iterate(pd::NamedProperties)
     if isempty(pd)
