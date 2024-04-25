@@ -58,31 +58,28 @@ end
         return dst
     end
 end
-if isdefined(Base, :delete)
-    import Base: delete
-else
-    delete(collection, k) = delete!(copy(collection), k)
-    function delete(d::Base.ImmutableDict{K,V}, key) where {K,V}
-        if isdefined(d, :parent)
-            if isequal(d.key, key)
-                d.parent
-            else
-                Base.ImmutableDict{K,V}(delete(d.parent, key), d.key, d.value)
-            end
+
+delete(collection, k) = delete!(copy(collection), k)
+function delete(d::Base.ImmutableDict{K,V}, key) where {K,V}
+    if isdefined(d, :parent)
+        if isequal(d.key, key)
+            d.parent
         else
-            d
+            Base.ImmutableDict{K,V}(delete(d.parent, key), d.key, d.value)
         end
+    else
+        d
     end
-    function delete(nt::NamedTuple{syms}, key::Symbol) where {syms}
-        idx = Base.fieldindex(typeof(nt), key, false)
-        if idx === 0
-            return nt
-        else
-            nv = Val{nfields(syms) - 1}()
-            NamedTuple{
-                ntuple(j -> j < idx ? getfield(syms, j) : getfield(syms, j + 1), nv)
-            }(ntuple(j -> j < idx ? getfield(nt, j) : getfield(nt, j + 1), nv))
-        end
+end
+function delete(nt::NamedTuple{syms}, key::Symbol) where {syms}
+    idx = Base.fieldindex(typeof(nt), key, false)
+    if idx === 0
+        return nt
+    else
+        nv = Val{nfields(syms) - 1}()
+        NamedTuple{
+            ntuple(j -> j < idx ? getfield(syms, j) : getfield(syms, j + 1), nv)
+        }(ntuple(j -> j < idx ? getfield(nt, j) : getfield(nt, j + 1), nv))
     end
 end
 #endregion
